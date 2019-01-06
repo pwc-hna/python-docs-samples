@@ -47,10 +47,18 @@ import json
 import os
 import ssl
 import time
+import serial
+from threading import Thread
+import re
 
 import jwt
 import paho.mqtt.client as mqtt
 
+import board
+import busio
+
+import adafruit_vcnl4010
+import datetime
 
 def create_jwt(project_id, private_key_file, algorithm):
     """Create a JWT (https://jwt.io) to establish an MQTT connection."""
@@ -71,23 +79,54 @@ def error_str(rc):
     return '{}: {}'.format(rc, mqtt.error_string(rc))
 
 
+class RemoteDevice(object):
+    """Represents the state of a single remote device."""
+
+    def __init__(self):
+        self.temperature = 0
+        self.pressure = 0
+        self.humidity = 0
+        self.gas_resistance = 0
+        self.altitude = 0
+        self.connected = False
+        self.ser = serial.Serial('/dev/ttyACM0', 115200)
+        thread = Thread(target = self.check_incoming_serial_data)
+        thread.start()
+
+    def process_input_sensor_data(self, input_data):
+        input_data = input_data.split(':',1)[-1]
+        print (input_data)
+        [self.temperature, self.pressure, self.humidity, self.gas_resistance, self.altitude] = re.findall(r"[-+]?\d*\.\d+|\d+", input_data)
+
+    def check_incoming_serial_data(self):
+        while(1):
+            if(self.ser.in_waiting > 0):
+                try:
+                    line = self.ser.readline().decode().strip("\r\n")
+                    self.process_input_sensor_data(line)
+                except Exception as e:
+                    print(e)
+                    pass
+
 class Device(object):
     """Represents the state of a single device."""
 
     def __init__(self):
-        self.temperature = 0
+        self.proximity = 0
+        self.ambient_lux = 0
         self.fan_on = False
         self.connected = False
+        self.i2c = busio.I2C(board.SCL, board.SDA)
+        self.sensor = adafruit_vcnl4010.VCNL4010(self.i2c)
 
     def update_sensor_data(self):
         """Pretend to read the device's sensor data.
         If the fan is on, assume the temperature decreased one degree,
         otherwise assume that it increased one degree.
         """
-        if self.fan_on:
-            self.temperature -= 1
-        else:
-            self.temperature += 1
+        self.proximity = self.sensor.proximity
+        self.ambient_lux = self.sensor.ambient_lux
+
 
     def wait_for_connection(self, timeout):
         """Wait for the device to become connected."""
@@ -212,6 +251,7 @@ def main():
     client.tls_set(ca_certs=args.ca_certs, tls_version=ssl.PROTOCOL_TLSv1_2)
 
     device = Device()
+    remoteDevice = RemoteDevice()
 
     client.on_connect = device.on_connect
     client.on_publish = device.on_publish
@@ -244,7 +284,7 @@ def main():
 
         # Report the device's temperature to the server by serializing it
         # as a JSON string.
-        payload = json.dumps({'temperature': device.temperature})
+        payload = json.dumps({'proximity': device.proximity,'luminance':device.ambient_lux,'time':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'temperature':remoteDevice.temperature, 'pressure':remoteDevice.pressure, 'humidity':remoteDevice.humidity, 'gas_resistance':remoteDevice.gas_resistance, 'altitude':remoteDevice.altitude})
         print('Publishing payload', payload)
         client.publish(mqtt_telemetry_topic, payload, qos=1)
         # Send events every second.
