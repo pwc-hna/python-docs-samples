@@ -84,16 +84,17 @@ def error_str(rc):
 class RemoteDevice(object):
     """Represents the state of a single remote device."""
 
-    def __init__(self):
+    def __init__(self, shouldStart=True):
         self.temperature = 0
         self.pressure = 0
         self.humidity = 0
         self.gas_resistance = 0
         self.altitude = 0
         self.connected = False
-        self.ser = serial.Serial('/dev/ttyACM0', 115200)
-        thread = Thread(target = self.check_incoming_serial_data)
-        thread.start()
+        if shouldStart:
+            self.ser = serial.Serial('/dev/ttyACM0', 115200)
+            thread = Thread(target = self.check_incoming_serial_data)
+            thread.start()
 
     def process_input_sensor_data(self, input_data):
         input_data = input_data.split(':',1)[-1]
@@ -234,7 +235,11 @@ def parse_command_line_args():
         default='event',
         help=('Indicates whether the message to be published is a '
               'telemetry event or a device state message.'))
-
+    parser.add_argument(
+        '--no_remote_device',
+        type=bool,
+        default=False,
+        help='Is there an arduino attached?')
     return parser.parse_args()
 
 
@@ -257,7 +262,10 @@ def main():
     client.tls_set(ca_certs=args.ca_certs, tls_version=ssl.PROTOCOL_TLSv1_2)
 
     device = Device()
-    remoteDevice = RemoteDevice()
+    if not args.no_remote_device:
+        remoteDevice = RemoteDevice()
+    else:
+        remoteDevice = RemoteDevice(False)
 
     client.on_connect = device.on_connect
     client.on_publish = device.on_publish
