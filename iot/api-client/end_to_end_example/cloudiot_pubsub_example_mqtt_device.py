@@ -59,6 +59,8 @@ import busio
 
 import adafruit_vcnl4010
 import datetime
+from envirophat import motion
+
 
 def create_jwt(project_id, private_key_file, algorithm):
     """Create a JWT (https://jwt.io) to establish an MQTT connection."""
@@ -116,16 +118,20 @@ class Device(object):
         self.ambient_lux = 0
         self.fan_on = False
         self.connected = False
-        self.i2c = busio.I2C(board.SCL, board.SDA)
-        self.sensor = adafruit_vcnl4010.VCNL4010(self.i2c)
+        #self.i2c = busio.I2C(board.SCL, board.SDA)
+        #self.sensor = adafruit_vcnl4010.VCNL4010(self.i2c)
+        self.accel_x = 0
+        self.accel_y = 0
+        self.accel_z = 0
 
     def update_sensor_data(self):
         """Pretend to read the device's sensor data.
         If the fan is on, assume the temperature decreased one degree,
         otherwise assume that it increased one degree.
         """
-        self.proximity = self.sensor.proximity
-        self.ambient_lux = self.sensor.ambient_lux
+        #self.proximity = self.sensor.proximity
+        #self.ambient_lux = self.sensor.ambient_lux
+        self.accel_x, self.accel_y, self.accel_z = motion.accelerometer()
 
 
     def wait_for_connection(self, timeout):
@@ -284,8 +290,9 @@ def main():
 
         # Report the device's temperature to the server by serializing it
         # as a JSON string.
-        payload = json.dumps({'proximity': device.proximity,'luminance':device.ambient_lux,'time':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'temperature':remoteDevice.temperature, 'pressure':remoteDevice.pressure, 'humidity':remoteDevice.humidity, 'gas_resistance':remoteDevice.gas_resistance, 'altitude':remoteDevice.altitude})
+        payload = json.dumps({'proximity': device.proximity,'luminance':device.ambient_lux, 'accel_x':device.accel_x,'accel_y':device.accel_y,'accel_z':device.accel_z,'time':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'temperature':remoteDevice.temperature, 'pressure':remoteDevice.pressure, 'humidity':remoteDevice.humidity, 'gas_resistance':remoteDevice.gas_resistance, 'altitude':remoteDevice.altitude})
         print('Publishing payload', payload)
+        print('on mqtt telemetry topic '+mqtt_telemetry_topic)
         client.publish(mqtt_telemetry_topic, payload, qos=1)
         # Send events every second.
         time.sleep(1)

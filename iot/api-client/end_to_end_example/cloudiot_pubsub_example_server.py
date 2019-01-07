@@ -153,6 +153,7 @@ class Server(object):
             """
             try:
                 data = json.loads(message.data)
+                #print ("data = "+data)
             except ValueError as e:
                 print('Loading Payload ({}) threw an Exception: {}.'.format(
                     message.data, e))
