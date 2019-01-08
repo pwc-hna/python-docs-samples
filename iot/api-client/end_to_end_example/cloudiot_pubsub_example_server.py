@@ -85,19 +85,16 @@ class Server(object):
                               data):
         """Push the data to the given device as configuration."""
         config_data = None
-        print('The device ({}) has a temperature '
-              'of: {}'.format(device_id, data['temperature']))
-        if data['temperature'] < 0:
-            # Turn off the fan.
-            config_data = {'fan_on': False}
-            print('Setting fan state for device', device_id, 'to off.')
-        elif data['temperature'] > 10:
-            # Turn on the fan
-            config_data = {'fan_on': True}
-            print('Setting fan state for device', device_id, 'to on.')
+        accel_y = float(data['accel_y'])
+        print("got acceleration on y axis: "+str(accel_y))
+        if accel_y > -0.11 and accel_y < -0.07:
+            # Turn off the led.
+            config_data = {'led_on': False}
+            print('Setting led state for device', device_id, 'to off.')
         else:
-            # Temperature is OK, don't need to push a new config.
-            return
+            # Turn on the led
+            config_data = {'led_on': True}
+            print('Setting led state for device', device_id, 'to on.')
 
         config_data_json = json.dumps(config_data)
         body = {
@@ -152,8 +149,8 @@ class Server(object):
             subscribed topic.
             """
             try:
-                data = json.loads(message.data)
-                #print ("data = "+data)
+                print("got data = "+message.data.decode('utf-8'))
+                data = json.loads(message.data.decode('utf-8'))
             except ValueError as e:
                 print('Loading Payload ({}) threw an Exception: {}.'.format(
                     message.data, e))

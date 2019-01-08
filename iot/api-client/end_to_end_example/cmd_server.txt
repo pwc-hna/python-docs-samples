@@ -1,0 +1,4 @@
+
+export GOOGLE_APPLICATION_CREDENTIALS=/home/pi/work/gcp-python-docs-samples/iot/api-client/end_to_end_example/service_account.json
+
+python3 cloudiot_pubsub_example_server.py --project_id=pwc-iot-test-project --pubsub_subscription=control-server-subscription  --service_account_json=service_account.json

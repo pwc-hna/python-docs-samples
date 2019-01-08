@@ -1,0 +1,2 @@
+ python3 cloudiot_pubsub_example_mqtt_device.py     --project_id=pwc-iot-test-project     --registry_id=my-registry     --device_id=pi3-node1     --private_key_file=rsa_private.pem     --algorithm=RS256     --mqtt_bridge_port=443     --cloud_region=europe-west1 --no_remote_device=True
+Creating JWT using RS256 from private key file rsa_private.pem

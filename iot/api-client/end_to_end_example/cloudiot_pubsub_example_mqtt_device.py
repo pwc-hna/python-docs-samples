@@ -60,6 +60,7 @@ import busio
 import adafruit_vcnl4010
 import datetime
 from envirophat import motion
+from envirophat import leds
 
 
 def create_jwt(project_id, private_key_file, algorithm):
@@ -117,7 +118,7 @@ class Device(object):
     def __init__(self):
         self.proximity = 0
         self.ambient_lux = 0
-        self.fan_on = False
+        self.led_on = False
         self.connected = False
         #self.i2c = busio.I2C(board.SCL, board.SDA)
         #self.sensor = adafruit_vcnl4010.VCNL4010(self.i2c)
@@ -171,25 +172,29 @@ class Device(object):
         payload = message.payload
         print('Received message \'{}\' on topic \'{}\' with Qos {}'.format(
             payload, message.topic, str(message.qos)))
-
         # The device will receive its latest config when it subscribes to the
         # config topic. If there is no configuration for the device, the device
         # will receive a config with an empty payload.
         if not payload:
+            print("No payload")
             return
-
         # The config is passed in the payload of the message. In this example,
         # the server sends a serialized JSON string.
-        data = json.loads(payload)
-        if data['fan_on'] != self.fan_on:
-            # If changing the state of the fan, print a message and
+        try:
+            data = json.loads(payload.decode('utf-8'))
+        except Exception as e:
+            print ("Exception caught: "+str(e))
+        if data['led_on'] != self.led_on:
+            # If changing the state of the led, print a message and
             # update the internal state.
-            self.fan_on = data['fan_on']
-            if self.fan_on:
-                print('Fan turned on.')
-            else:
-                print('Fan turned off.')
+            self.led_on = data['led_on']
+            if self.led_on:
+                print('Led turned on.')
+                leds.on()
 
+            else:
+                print('Led turned off.')
+                leds.off()
 
 def parse_command_line_args():
     """Parse command line arguments."""
